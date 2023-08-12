@@ -1,0 +1,25 @@
+{
+    "name": "chenwenzi/cn-pay",
+    "description": "A CN Payment By PHP",
+    "keywords": ["CN", "php", "payment", "api"],
+    "homepage": "https://github.com/chenwenzi/cn-pay",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "chenwenzi",
+            "email": "chenwenzi@outlook.com"
+        }
+    ],
+    "autoload": {
+      "classmap": ["src/"]
+    },
+    "require": {
+      "php": "^7.2",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "require-dev": {
+    },
+    "scripts": {
+    }
+}

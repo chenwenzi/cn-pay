@@ -6,11 +6,12 @@ error_reporting(E_ALL);
 $pay = new PaymentService(
     [
         'debug' => 1,    //打印日志
-        'signKey' => 'sx123',  //md5 加密秘钥
-        'payApi' => 'http://cn-pay.com/examples/api.php', //支付api
+        'signKey' => 'xx123',  //md5 加密秘钥
+        //'signKeyName' => 'key',  // &key=signKey default: key
+        'payApi' => 'http://xxx.com/Pay_Index.html', //支付api
         //'input' => json_decode('{"amount":100,"orderNo":"2023081217351364d752","subject":"支付100元","sign":"B84B243F0892890914C5F8F362158D87"}', true),
         'signName' => 'pay_md5sign', //签名字段名
-        'method' => 'POST',
+        //'method' => 'POST',  // default: POST
         'exclude' => [
             //参与请求参数，但不参与签名 或者 验签是不参与签名的字段
             'pay_md5sign',

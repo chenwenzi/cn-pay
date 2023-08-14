@@ -11,7 +11,7 @@
  */
 class PaymentService
 {
-    const PAYMENT = 'CnPay';
+    const PAYMENT = 'cnPay';
 
     private $_pay_config;
     private $_pay_params;
@@ -50,8 +50,8 @@ class PaymentService
         $this->_log = (bool)($payConfig['log'] ?? $payConfig['debug'] ?? 0);
         $this->_log_pretty = (bool)($payConfig['log_pretty'] ?? 0);
         $this->_log_file = $payConfig['log_file'] ?? null;
-        $this->_method = $payConfig['method'] ?? 'GET';
-        $this->_sign = $payConfig['signName'] ?? 'sign';
+        $this->_method = strtoupper($payConfig['method'] ?? 'POST');
+        $this->_sign = $payConfig['signName'] ?? '';
         $this->_input = $payConfig['input'] ?? [];
         $this->_pay_params_ignore = $payConfig['exclude'] ?? [];
 
@@ -76,6 +76,10 @@ class PaymentService
             }
         }
 
+        if (!$this->_sign) {
+            throw new \Exception('can\'t get "signName" in payConfig');
+        }
+
         $this->_pay_api = $this->_pay_config['payApi'] ?? '';
         if(!$this->_pay_api) {
             throw new \Exception('can\'t get "payApi" in payConfig');
@@ -93,12 +97,13 @@ class PaymentService
         throw new \Exception($this->_ret['body'] ?? []);
     }
 
-    private function _addPayParamsIgnore($keys) {
+    private function _addPayParamsIgnore($keys) : void
+    {
        !is_array($keys) and $keys = [$keys];
         $this->_pay_params_ignore = array_unique(array_merge($this->_pay_params_ignore, $keys));
     }
 
-    private function _generateSignature()
+    private function _generateSignature() : void
     {
         if($this->_sign_type != 'md5') {
             throw new \Exception('supported sign type only: md5');
@@ -110,9 +115,6 @@ class PaymentService
         $this->log($data, 'signature data');
         foreach ($data as $k => $v) {
             $k = trim($k);
-            if($k == 'sign') {
-                continue;
-            }
             if(in_array($k, $exclude)) {
                 continue;
             }
@@ -131,31 +133,41 @@ class PaymentService
 
     private function _buildPayParameters()
     {
+        if ($this->_method == 'JSON') {
+            $this->_body = $this->_pay_params;
+        } elseif ($this->_method == 'GET') {
+            $this->_pay_api .= '?' . http_build_query($this->_pay_params);
+        }
     }
 
     /**
      * Request handler.
      *
-     * @return array
      */
-    private function _request()
+    private function _request() : void
     {
-        $query = [
-            'headers' => $this->_headers,
+        $options = [
+            'headers' => $this->_headers ?? [],
             'http_errors' => false
         ];
-        if (strlen($this->_body)) {
-            $query['body'] = $this->_body;
-        }
-        $this->_buildPayParameters();
-        $this->_generateSignature();
-        $this->log($this->_pay_params, 'Pay request params');
 
+        $this->_generateSignature();
+        $this->_buildPayParameters();
+        //log
+        $this->log($this->_pay_params, 'Pay request params');
+        $this->log($this->_pay_api, 'Pay request api, '. $this->_method);
+
+        //data
+        $this->_method == 'POST' and $options['form_params'] = $this->_pay_params;
+        $this->_method == 'JSON' and $options['body'] = $this->_body ?? '' and $this->_method = 'POST';
+
+        //request
         $ret = $this->_client->request(
             $this->_method,
             $this->_pay_api,
-            $query
+            $options
         );
+        //result
         $this->_ret = [
             'code' => $ret->getStatusCode(),
             'body' => $ret->getBody()->getContents()
@@ -163,7 +175,8 @@ class PaymentService
         $this->log($this->_ret, 'Pay response data');
     }
 
-    public function verify() {
+    public function verify() : bool
+    {
         if(empty($this->_input)) {
             $this->_input = $_REQUEST;
         }
@@ -172,8 +185,8 @@ class PaymentService
             throw new \Exception("no sign key find: ['{$this->_sign}']");
         }
         $this->_pay_params = $this->_input;
-        $this->_buildPayParameters();
         $this->_generateSignature();
+        $this->_buildPayParameters();
         $this->log(strtoupper($this->_input[$this->_sign]), 'input-signature');
 
         return $this->_pay_params[$this->_sign] === strtoupper($this->_input[$this->_sign]);

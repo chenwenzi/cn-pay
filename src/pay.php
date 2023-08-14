@@ -23,6 +23,7 @@ class PaymentService
         'md5',
     ];
     private $_sign_key;
+    private $_sign_key_name;
     private $_sign_cert;
     private $_ret;
 
@@ -71,6 +72,7 @@ class PaymentService
         }
         if($this->_sign_type == 'md5') {
             $this->_sign_key = $payConfig['signKey'] ?? '';
+            $this->_sign_key_name = $payConfig['signKeyName'] ?? 'key';
             if(!$this->_sign_key) {
                 throw new \Exception('can\'t get "signKey" in payConfig, when sign type: md5');
             }
@@ -123,7 +125,7 @@ class PaymentService
             }
             $buff .= ($k . '=' . $v . '&');
         }
-        $buff .= ('key=' . $this->_sign_key);
+        $buff .= ($this->_sign_key_name . '=' . $this->_sign_key);
         $this->log($buff, 'signature string');
         $sign = strtoupper(md5($buff));
         $this->log($sign, 'signature result');

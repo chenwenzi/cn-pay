@@ -6,40 +6,45 @@ error_reporting(E_ALL);
 $pay = new PaymentService(
     [
         'debug' => 1,    //打印日志
-        'signKey' => 'xx123',  //md5 加密秘钥
-        //'signKeyName' => 'key',  // &key=signKey default: key
-        'payApi' => 'http://xxx.com/Pay_Index.html', //支付api
-        //'input' => json_decode('{"amount":100,"orderNo":"2023081217351364d752","subject":"支付100元","sign":"B84B243F0892890914C5F8F362158D87"}', true),
-        'signName' => 'pay_md5sign', //签名字段名
-        //'method' => 'POST',  // default: POST
-        'exclude' => [
-            //参与请求参数，但不参与签名 或者 验签是不参与签名的字段
-            'pay_md5sign',
-        ]
+        'api' => 'http://localhost/example/api.php', //支付api
+        //'api' => 'http://cn-pay.com/examples/api.php', //支付api
+        //'input' => json_decode('{"return_code":"SUCCESS","return_msg":"OK","trade_no":"536052","out_trade_no":"20230815112022295547","amount":"100.00","create_time":"1692069624","expire_time":"","subject":"￥100","client_ip":"","sign":"217D0FA9A734A7A31F0FB9C9CA44671D"}', true),
+        'method' => 'POST',  // default: POST
+        'encrypt' => [ //加密配置
+            'type' => 'md5', //签名方式 default: md5
+            'upper' => true, //使用大写签名 default: true
+            'sign' => 'sign', //签名字段名 &sign=md5(...) default: sign
+            'key' => 'key', //签名拼接字段名   md5(....&key=secret) default: key
+            'secret' => '123', //加密秘钥
+            'exclude' => [ //参与请求参数，但不参与签名 或者 验签是不参与签名的字段
+                'sign',
+            ]
+        ],
+
     ], [
         // 参与请求参数与签名
-        'pay_memberid' => '230904425',
-        'pay_orderid' => date('YmdHis') . substr(uniqid(),0,6),
-        'pay_applydate' => date('Y-m-d H:i:s'),
-        'pay_bankcode' => 961,
-        'pay_notifyurl' => 'https://www.google.com',
-        'pay_callbackurl' => 'https://www.google.com',
-        'pay_amount' => 100,
+        'app_id' => '1653',
+        'out_trade_no' => date('YmdHis') . mt_rand(100000, 999999),
+        'subject' => '￥100',
+        'amount' => 100,
+        'channel' => 601,
+        'client_ip' => $_SERVER['REMOTE_ADDR'],
+        'return_url' => 'https://www.google.com',
+        'notify_url' => 'https://www.google.com',
     ]
 );
 
 try {
     $ret = $pay->send(); //request Pay
-    echo('<pre>');
-    print_r($ret);
+    //echo('<pre>');
+    //print_r($ret);
 } catch (\Exception $e) {
     echo $e->getMessage();
     echo $e->getTraceAsString();
 }
 
-//amount=100&orderNo=2023081217351364d752&k
 try {
-    //var_dump($pay->verify());
+    //var_dump($pay->verify()); //verify signature
 } catch (\Exception $e) {
     echo $e->getMessage();
     echo $e->getTraceAsString();

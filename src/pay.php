@@ -15,16 +15,16 @@ class PaymentService
 
     private $_pay_config;
     private $_pay_params;
-    private $_pay_params_ignore = [];
+    private $_encrypt_exclude = [];
     private $_pay_api;
-    private $_sign;
-    private $_sign_type;
-    private $_sign_list = [ //support sign type
+    private $_encrypt_sign;
+    private $_encrypt_type;
+    private $_encrypt_list = [ //support sign type
         'md5',
     ];
-    private $_sign_key;
-    private $_sign_key_name;
-    private $_sign_cert;
+    private $_encrypt_secret;
+    private $_encrypt_key;
+    private $_encrypt_cert;
     private $_ret;
 
     private $_log = 0; //log
@@ -42,7 +42,6 @@ class PaymentService
      *
      * @param array $payConfig  payment secret key and ...
      * @param array $payParams $pay params
-     * @param string $sign     sign type
      */
     public function __construct(array $payConfig, array $payParams)
     {
@@ -52,9 +51,9 @@ class PaymentService
         $this->_log_pretty = (bool)($payConfig['log_pretty'] ?? 0);
         $this->_log_file = $payConfig['log_file'] ?? null;
         $this->_method = strtoupper($payConfig['method'] ?? 'POST');
-        $this->_sign = $payConfig['signName'] ?? '';
+        $this->_encrypt_sign = $payConfig['encrypt']['sign'] ?? 'sign';
         $this->_input = $payConfig['input'] ?? [];
-        $this->_pay_params_ignore = $payConfig['exclude'] ?? [];
+        $this->_encrypt_exclude = $payConfig['encrypt']['exclude'] ?? [];
 
         //handle exception
         set_exception_handler(function (\Throwable $e) {
@@ -66,25 +65,25 @@ class PaymentService
             throw $e;
         });
 
-        $this->_sign_type = array_combine($this->_sign_list, $this->_sign_list)[strtolower($payConfig['signType'] ?? 'md5')];
-        if(!$this->_sign_type) {
-            throw new \Exception('unsupported sign type, supported: '. join(', ', $this->_sign_list));
+        $this->_encrypt_type = array_combine($this->_encrypt_list, $this->_encrypt_list)[strtolower($payConfig['encrypt']['type'] ?? 'md5')];
+        if(!$this->_encrypt_type) {
+            throw new \Exception('unsupported sign type, supported: '. join(', ', $this->_encrypt_list));
         }
-        if($this->_sign_type == 'md5') {
-            $this->_sign_key = $payConfig['signKey'] ?? '';
-            $this->_sign_key_name = $payConfig['signKeyName'] ?? 'key';
-            if(!$this->_sign_key) {
-                throw new \Exception('can\'t get "signKey" in payConfig, when sign type: md5');
+        if($this->_encrypt_type == 'md5') {
+            $this->_encrypt_secret = $payConfig['encrypt']['secret'] ?? '';
+            $this->_encrypt_key = $payConfig['encrypt']['key'] ?? 'key';
+            if(!$this->_encrypt_secret) {
+                throw new \Exception('can\'t get "encrypt[key]" in payConfig, when sign type: md5');
             }
         }
 
-        if (!$this->_sign) {
-            throw new \Exception('can\'t get "signName" in payConfig');
+        if (!$this->_encrypt_sign) {
+            throw new \Exception('can\'t get "encrypt[sign]" in payConfig');
         }
 
-        $this->_pay_api = $this->_pay_config['payApi'] ?? '';
-        if(!$this->_pay_api) {
-            throw new \Exception('can\'t get "payApi" in payConfig');
+        $this->_pay_api = $this->_pay_config['api'] ?? '';
+        if(empty($this->_pay_api) or strlen($this->_pay_api) < 5) {
+            throw new \Exception('can\'t get "api" in payConfig');
         }
 
         $this->_client = new GuzzleHttp\Client();
@@ -102,17 +101,17 @@ class PaymentService
     private function _addPayParamsIgnore($keys) : void
     {
        !is_array($keys) and $keys = [$keys];
-        $this->_pay_params_ignore = array_unique(array_merge($this->_pay_params_ignore, $keys));
+        $this->_encrypt_exclude = array_unique(array_merge($this->_encrypt_exclude, $keys));
     }
 
     private function _generateSignature() : void
     {
-        if($this->_sign_type != 'md5') {
+        if($this->_encrypt_type != 'md5') {
             throw new \Exception('supported sign type only: md5');
         }
         $buff = '';
         $data = $this->_pay_params;
-        $exclude = $this->_pay_params_ignore;
+        $exclude = $this->_encrypt_exclude;
         ksort($data);
         $this->log($data, 'signature data');
         foreach ($data as $k => $v) {
@@ -125,12 +124,12 @@ class PaymentService
             }
             $buff .= ($k . '=' . $v . '&');
         }
-        $buff .= ($this->_sign_key_name . '=' . $this->_sign_key);
+        $buff .= ($this->_encrypt_key . '=' . $this->_encrypt_secret);
         $this->log($buff, 'signature string');
-        $sign = strtoupper(md5($buff));
+        $sign = ($this->_pay_config['encrypt']['upper'] ?? false) ? strtoupper(md5($buff)) : md5($buff);
         $this->log($sign, 'signature result');
-        $this->_pay_params[$this->_sign] = $sign;
-        $this->_addPayParamsIgnore($this->_sign);
+        $this->_pay_params[$this->_encrypt_sign] = $sign;
+        $this->_addPayParamsIgnore($this->_encrypt_sign);
     }
 
     private function _buildPayParameters()
@@ -174,7 +173,8 @@ class PaymentService
             'code' => $ret->getStatusCode(),
             'body' => $ret->getBody()->getContents()
         ];
-        $this->log($this->_ret, 'Pay response data');
+        $this->log($this->_ret['code'], 'Pay response code');
+        $this->log($this->_ret['body'], 'Pay response body');
     }
 
     public function verify() : bool
@@ -183,15 +183,28 @@ class PaymentService
             $this->_input = $_REQUEST;
         }
         $this->log($this->_input, 'input data');
-        if(empty($this->_input[$this->_sign])) {
-            throw new \Exception("no sign key find: ['{$this->_sign}']");
+        if(empty($this->_input[$this->_encrypt_sign])) {
+            $this->log("no sign key find: [{$this->_encrypt_sign}]");
+            return false;
         }
         $this->_pay_params = $this->_input;
         $this->_generateSignature();
-        $this->_buildPayParameters();
-        $this->log(strtoupper($this->_input[$this->_sign]), 'input-signature');
+        $this->log(strtoupper($this->_input[$this->_encrypt_sign]), 'input-signature');
 
-        return $this->_pay_params[$this->_sign] === strtoupper($this->_input[$this->_sign]);
+        $sign = $this->_pay_params[$this->_encrypt_sign];
+        if(strtoupper($sign) !== strtoupper($this->_input[$this->_encrypt_sign])) {
+            $this->log('verify sign failed');
+            return false;
+        }
+        $this->log('verify sign success');
+
+        return true;
+    }
+
+    private function isJson($string) : bool
+    {
+        json_decode($string);
+        return (json_last_error() === JSON_ERROR_NONE);
     }
 
     private function log($msg = '', $title = '') {
@@ -205,12 +218,18 @@ class PaymentService
         if(empty($msg)) {
             $msg = json_encode($msg);
         }
-        if(is_array($msg)) {
+        if(is_array($msg) or is_object($msg)) {
             if($this->_log_pretty) {
                 $msg = print_r($msg, true);
             }
             $msg = json_encode($msg, JSON_UNESCAPED_UNICODE);
+        } else {
+            if($this->_log_pretty and $this->isJson($msg)) {
+                $msg = print_r(json_decode($msg, true), true);
+            }
         }
+        $debug = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 2);
+        $title = ($debug[1]['function'] ?? '') . ': ' . $title;
         $this->_log_file = $this->_log_file ?? 'log-' . date('Y-m-d') . '.txt';
         $head = self::PAYMENT. ' '.date('Y-m-d H:i:s ').'('.$title.') '.($_SERVER['REQUEST_URI'] ?? '').PHP_EOL;
         @file_put_contents($dir . '/' . $this->_log_file, $head . $msg . PHP_EOL . PHP_EOL, FILE_APPEND);

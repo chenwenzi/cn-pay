@@ -7,10 +7,12 @@
  * @package  cnPayment
  * @author   wenzi <chenwenzi@outlook.com>
  * @license  https://opensource.org/licenses/MIT MIT License
- * @link     https://github.com/chenwezi/php-third-pay
+ * @link     https://github.com/chenwezi/cn-pay
  */
 
 namespace chenwenzi;
+
+use GuzzleHttp\Client;
 
 class cnPayment
 {
@@ -89,7 +91,7 @@ class cnPayment
             throw new \Exception('can\'t get "api" in payConfig');
         }
 
-        $this->_client = new GuzzleHttp\Client();
+        $this->_client = new Client();
     }
 
     public function send()

@@ -131,7 +131,7 @@ class cnPayment
         }
         $buff .= ($this->_encrypt_key . '=' . $this->_encrypt_secret);
         $this->log($buff, 'signature string');
-        $sign = ($this->_pay_config['encrypt']['upper'] ?? false) ? strtoupper(md5($buff)) : md5($buff);
+        $sign = ($this->_pay_config['encrypt']['upper'] ?? true) ? strtoupper(md5($buff)) : md5($buff);
         $this->log($sign, 'signature result');
         $this->_pay_params[$this->_encrypt_sign] = $sign;
         $this->_addPayParamsIgnore($this->_encrypt_sign);

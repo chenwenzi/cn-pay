@@ -4,12 +4,12 @@
  *
  *
  * @category Class
- * @package  PaymentService
+ * @package  cnPayment
  * @author   wenzi <chenwenzi@outlook.com>
  * @license  https://opensource.org/licenses/MIT MIT License
  * @link     https://github.com/chenwezi/php-third-pay
  */
-class PaymentService
+class cnPayment
 {
     const PAYMENT = 'cnPay';
 

@@ -9,6 +9,9 @@
  * @license  https://opensource.org/licenses/MIT MIT License
  * @link     https://github.com/chenwezi/php-third-pay
  */
+
+namespace chenwenzi;
+
 class cnPayment
 {
     const PAYMENT = 'cnPay';

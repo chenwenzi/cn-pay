@@ -60,16 +60,6 @@ class cnPayment
         $this->_input = $payConfig['input'] ?? [];
         $this->_encrypt_exclude = $payConfig['encrypt']['exclude'] ?? [];
 
-        //handle exception
-        set_exception_handler(function (\Throwable $e) {
-            $this->log($e->getMessage() . PHP_EOL . $e->getTraceAsString() . PHP_EOL);
-            throw $e;
-        });
-        set_error_handler(function (\Throwable $e) {
-            $this->log($e->getMessage() . PHP_EOL . $e->getTraceAsString() . PHP_EOL);
-            throw $e;
-        });
-
         $this->_encrypt_type = array_combine($this->_encrypt_list, $this->_encrypt_list)[strtolower($payConfig['encrypt']['type'] ?? 'md5')];
         if(!$this->_encrypt_type) {
             throw new \Exception('unsupported sign type, supported: '. join(', ', $this->_encrypt_list));

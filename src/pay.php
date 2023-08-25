@@ -208,7 +208,7 @@ class cnPayment
         }
         $dir = self::PAYMENT;
         if(!is_dir($dir)) {
-            mkdir($dir, 7555);
+            mkdir($dir, 755);
         }
         if(empty($msg)) {
             $msg = json_encode($msg);

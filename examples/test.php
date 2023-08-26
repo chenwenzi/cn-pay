@@ -8,7 +8,8 @@ error_reporting(E_ALL);
 
 $payConfig = [
     'debug' => 1,    //打印日志
-    'api' => 'http://localhost/example/api.php', //支付api
+    'api' => 'http://localhost/examples/api.php', //支付api
+    'queryApi' => 'http://cn-pay.com/examples/api.php', //查询api
     //verify sign demo input
     //'input' => json_decode('{"return_code":"SUCCESS","return_msg":"OK","trade_no":"536052","out_trade_no":"20230815112022295547","amount":"100.00","create_time":"1692069624","expire_time":"","subject":"￥100","client_ip":"","sign":"217D0FA9A734A7A31F0FB9C9CA44671D"}', true),
     'method' => 'POST',  // default: POST
@@ -46,8 +47,17 @@ try {
 
 try {
     $ret = $pay->send(); //request Pay
-    echo('<pre>');
-    print_r($ret);
+    //echo('<pre>');
+    //print_r($ret);
+} catch (\Throwable $e) {
+    echo $e->getMessage();
+    echo $e->getTraceAsString();
+}
+
+try {
+    //$ret = $pay->query(['no' => 123]); //query Pay
+    //echo('<pre>');
+    //print_r($ret);
 } catch (\Throwable $e) {
     echo $e->getMessage();
     echo $e->getTraceAsString();

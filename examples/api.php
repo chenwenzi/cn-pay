@@ -7,6 +7,10 @@ $head2 = 'post: '.$_SERVER['REQUEST_URI'] . PHP_EOL;
 
 echo '<pre>';
 
+echo "GET\n";
+
 print_r($get);
+
+echo "POST\n";
 
 print_r($post);

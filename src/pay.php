@@ -22,6 +22,7 @@ class cnPayment
     private $_pay_params;
     private $_encrypt_exclude = [];
     private $_pay_api;
+    private $_pay_query_api;
     private $_encrypt_sign;
     private $_encrypt_type;
     private $_encrypt_list = [ //support sign type
@@ -59,6 +60,7 @@ class cnPayment
         $this->_encrypt_sign = $payConfig['encrypt']['sign'] ?? 'sign';
         $this->_input = $payConfig['input'] ?? [];
         $this->_encrypt_exclude = $payConfig['encrypt']['exclude'] ?? [];
+        $this->_pay_query_api = $payConfig['queryApi'] ?? '';
 
         $this->_encrypt_type = array_combine($this->_encrypt_list, $this->_encrypt_list)[strtolower($payConfig['encrypt']['type'] ?? 'md5')];
         if(!$this->_encrypt_type) {
@@ -133,6 +135,7 @@ class cnPayment
             $this->_body = $this->_pay_params;
         } elseif ($this->_method == 'GET') {
             $this->_pay_api .= '?' . http_build_query($this->_pay_params);
+            $this->_pay_query_api .= '?' . http_build_query($this->_pay_params);
         }
     }
 
@@ -170,6 +173,45 @@ class cnPayment
         ];
         $this->log($this->_ret['code'], 'Pay response code');
         $this->log($this->_ret['body'], 'Pay response body');
+    }
+
+    public function query($params = [], $method = 'GET') : array
+    {
+        if (empty($params)) {
+            throw new \Exception('params is require');
+        }
+        if (empty($this->_pay_query_api)) {
+            throw new \Exception('payConfig[queryApi] is require');
+        }
+        $this->log($params, 'input params');
+        $method = strtoupper($method);
+        $this->_method = $method;
+        $this->_pay_params = $params;
+        $this->_generateSignature();
+        $this->_buildPayParameters();
+        $options = [
+            'headers' => $this->_headers ?? [],
+            'http_errors' => false
+        ];
+        $method == 'POST' and $options['form_params'] = $this->_pay_params;
+        //log
+        $this->log($this->_pay_params, 'request params');
+        $this->log($this->_pay_query_api, 'request api, '. $method);
+        //request
+        $ret = $this->_client->request(
+            $method,
+            $this->_pay_query_api,
+            $options
+        );
+        //result
+        $res = [
+            'code' => $ret->getStatusCode(),
+            'body' => $ret->getBody()->getContents()
+        ];
+        $this->log($res['code'], 'response code');
+        $this->log($res['body'], 'response body');
+
+        return $res;
     }
 
     public function verify() : bool
